@@ -32,7 +32,7 @@ of setting the default region.
     i-00000000000000001 bar
 ❯   i-00000000000000002 baz
     i-00000000000000003 qux
-ssh -t ubuntu@ip-192-168-0-1.us-west-2.compute.internal
+ssh -t -i ~/.ssh/identity.pem ubuntu@ip-192-168-0-1.us-west-2.compute.internal
 Welcome to Ubuntu 18.04.1 LTS (GNU/Linux 4.15.0-1021-aws x86_64)
 
  * Documentation:  https://help.ubuntu.com
