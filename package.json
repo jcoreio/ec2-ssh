@@ -1,10 +1,16 @@
 {
-  "name": "untranspiled-js-library-skeleton",
+  "name": "@jcoreio/ec2-ssh",
   "version": "0.0.0-development",
-  "description": "my skeleton for transpiler-free JS packages",
+  "description": "select an EC2 instance in your account from a prompt, then SSH into it",
   "main": "index.js",
   "author": "Andy Edwards",
   "license": "MIT",
+  "engines": {
+    "node": ">=12"
+  },
+  "bin": {
+    "ec2-ssh": "./index.js"
+  },
   "scripts": {
     "lint": "eslint *.js test --cache",
     "lint:fix": "eslint --fix *.js test --cache",
@@ -14,7 +20,7 @@
     "test:watch": "cross-env NODE_ENV=test mocha --watch $npm_package_config_mocha",
     "test:debug": "cross-env NODE_ENV=test mocha --inspect-brk $npm_package_config_mocha",
     "codecov": "nyc report --reporter=text-lcov > coverage.lcov; codecov",
-    "prepublishOnly": "npm run lint && npm test",
+    "prepublishOnly": "npm run lint",
     "open:coverage": "open coverage/lcov-report/index.html",
     "semantic-release": "semantic-release"
   },
@@ -56,15 +62,18 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/jedwards1211/untranspiled-js-library-skeleton.git"
+    "url": "https://github.com/jcoreio/ec2-ssh.git"
   },
   "keywords": [
-    "skeleton"
+    "aws",
+    "ec2",
+    "ssh",
+    "cli"
   ],
   "bugs": {
-    "url": "https://github.com/jedwards1211/untranspiled-js-library-skeleton/issues"
+    "url": "https://github.com/jcoreio/ec2-ssh/issues"
   },
-  "homepage": "https://github.com/jedwards1211/untranspiled-js-library-skeleton#readme",
+  "homepage": "https://github.com/jcoreio/ec2-ssh#readme",
   "devDependencies": {
     "@commitlint/cli": "^11.0.0",
     "@commitlint/config-conventional": "^11.0.0",
@@ -84,5 +93,7 @@
     "prettier-eslint": "^8.8.2",
     "semantic-release": "^17.1.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "aws-sdk": "^2.829.0"
+  }
 }
