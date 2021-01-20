@@ -6,9 +6,9 @@
 [![npm version](https://badge.fury.io/js/%40jcoreio%2Fec2-ssh.svg)](https://badge.fury.io/js/%40jcoreio%2Fec2-ssh)
 
 ```
-npm i -g ec2-ssh
+npm i -g @jcoreio/ec2-ssh
 # Or
-npx ec2-ssh
+npx @jcoreio/ec2-ssh
 ```
 
 Use at your own risk. Prompts you to select an EC2 instance, then SSHes into that instance, attempting to select the correct username automatically, and using the internal DNS hostname, and the identity file at `~/.ssh/<KeyName>.pem` if it exists, where `KeyName` is the property of the EC2 instance in the `aws-sdk` response.
