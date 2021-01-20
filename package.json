@@ -94,6 +94,7 @@
     "semantic-release": "^17.1.2"
   },
   "dependencies": {
+    "@jcoreio/aws-select-cli-prompts": "^1.0.1",
     "aws-sdk": "^2.829.0"
   }
 }
