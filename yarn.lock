@@ -198,13 +198,14 @@
     update-notifier "^2.2.0"
     yargs "^8.0.2"
 
-"@jcoreio/aws-select-cli-prompts@^1.0.1":
-  version "1.0.1"
-  resolved "https://registry.npmjs.org/@jcoreio/aws-select-cli-prompts/-/aws-select-cli-prompts-1.0.1.tgz#a5b92055e59ba74758b01968c7e17605cf67ff9b"
-  integrity sha512-ycean9jyEOP6awi0Ay4XmOmp9QNjkUpsu7Cbg/iXI9t6JE+wPA7+9ze+ZyyCN6ic1y5iFLefbKWCwqGi/IAHGg==
+"@jcoreio/aws-select-cli-prompts@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@jcoreio/aws-select-cli-prompts/-/aws-select-cli-prompts-1.1.0.tgz#43a70afd021335977275ea2c1d60a0bf5f0f6deb"
+  integrity sha512-iSxhElIPfUTFK0QS72HQlgeN+OeHW5eTrFCwt8/0YNsjj5lFv+gPGKbUbyNa5XGj0dh3cVOGp+tAlG8WEpRMeA==
   dependencies:
     "@babel/runtime" "^7.1.5"
     async-autocomplete-cli "^1.0.0"
+    chalk "^4.0.0"
     fs-extra "^9.1.0"
 
 "@jedwards1211/commitlint-config@^1.0.1":

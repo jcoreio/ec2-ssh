@@ -19,7 +19,6 @@ async function getAmiName(ec2, ImageId) {
   if (!name) throw new Error(`failed to get name for image: ${ImageId}`)
   return name
 }
-
 function getUser(ami) {
   if (/ubuntu|nanostack/i.test(ami)) return 'ubuntu'
   if (/debian/i.test(ami)) return 'admin'
@@ -56,15 +55,41 @@ function signalCode(signal) {
   return 0
 }
 
-async function ec2ssh({ ec2 = new AWS.EC2() } = {}) {
-  const instance = await selectEC2Instance({ ec2 })
+async function ec2ssh({ ec2 = new AWS.EC2(), ssm = new AWS.SSM() } = {}) {
+  const instance = await selectEC2Instance({
+    ec2,
+    Filters: [
+      {
+        Name: 'instance-state-name',
+        Values: ['pending', 'running'],
+      },
+    ],
+  })
 
-  const { ImageId, KeyName, PrivateDnsName, PublicDnsName } = instance
+  const {
+    InstanceId,
+    ImageId,
+    KeyName,
+    PrivateDnsName,
+    PublicDnsName,
+  } = instance
   let host = PrivateDnsName || PublicDnsName
   if (!host)
     throw new Error(`instance doesn't have a PrivateDnsName or PublicDnsName`)
 
-  const user = ImageId ? getUser(await getAmiName(ec2, ImageId)) : null
+  let user = ImageId ? getUser(await getAmiName(ec2, ImageId)) : null
+
+  if (InstanceId) {
+    const { InstanceInformationList: [{ PlatformName } = {}] = [] } = await ssm
+      .describeInstanceInformation({
+        Filters: [{ Key: 'InstanceIds', Values: [InstanceId] }],
+      })
+      .promise()
+    if (PlatformName) {
+      const userFromPlatform = getUser(PlatformName)
+      if (userFromPlatform !== 'ec2-user') user = userFromPlatform
+    }
+  }
 
   if (user) host = `${user}@${host}`
 
