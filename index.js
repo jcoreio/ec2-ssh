@@ -5,7 +5,11 @@
 if (process.env.AWS_SDK_LOAD_CONFIG == null)
   process.env.AWS_SDK_LOAD_CONFIG = '1'
 
-const AWS = require('aws-sdk')
+const { EC2Client, DescribeImagesCommand } = require('@aws-sdk/client-ec2')
+const {
+  SSMClient,
+  DescribeInstanceInformationCommand,
+} = require('@aws-sdk/client-ssm')
 const { selectEC2Instance } = require('@jcoreio/aws-select-cli-prompts')
 const { spawn } = require('child_process')
 const os = require('os')
@@ -14,7 +18,9 @@ const path = require('path')
 const { promisify } = require('util')
 
 async function getAmiName(ec2, ImageId) {
-  const { Images } = await ec2.describeImages({ ImageIds: [ImageId] }).promise()
+  const { Images } = await ec2.send(
+    new DescribeImagesCommand({ ImageIds: [ImageId] })
+  )
   const name = Images && Images[0] && Images[0].Name
   if (!name) throw new Error(`failed to get name for image: ${ImageId}`)
   return name
@@ -55,7 +61,7 @@ function signalCode(signal) {
   return 0
 }
 
-async function ec2ssh({ ec2 = new AWS.EC2(), ssm = new AWS.SSM() } = {}) {
+async function ec2ssh({ ec2 = new EC2Client(), ssm = new SSMClient() } = {}) {
   const instance = await selectEC2Instance({
     ec2,
     Filters: [
@@ -80,11 +86,13 @@ async function ec2ssh({ ec2 = new AWS.EC2(), ssm = new AWS.SSM() } = {}) {
   let user = ImageId ? getUser(await getAmiName(ec2, ImageId)) : null
 
   if (InstanceId) {
-    const { InstanceInformationList: [{ PlatformName } = {}] = [] } = await ssm
-      .describeInstanceInformation({
+    const {
+      InstanceInformationList: [{ PlatformName } = {}] = [],
+    } = await ssm.send(
+      new DescribeInstanceInformationCommand({
         Filters: [{ Key: 'InstanceIds', Values: [InstanceId] }],
       })
-      .promise()
+    )
     if (PlatformName) {
       const userFromPlatform = getUser(PlatformName)
       if (userFromPlatform !== 'ec2-user') user = userFromPlatform
