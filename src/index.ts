@@ -4,28 +4,29 @@
 
 if (process.env.AWS_SDK_LOAD_CONFIG == null)
   process.env.AWS_SDK_LOAD_CONFIG = '1'
-
-const { EC2Client, DescribeImagesCommand } = require('@aws-sdk/client-ec2')
-const {
+import { EC2Client, DescribeImagesCommand } from '@aws-sdk/client-ec2'
+import {
   SSMClient,
   DescribeInstanceInformationCommand,
-} = require('@aws-sdk/client-ssm')
-const { selectEC2Instance } = require('@jcoreio/aws-select-cli-prompts')
-const { spawn } = require('child_process')
-const os = require('os')
-const fs = require('fs')
-const path = require('path')
-const { promisify } = require('util')
+} from '@aws-sdk/client-ssm'
+import { selectEC2Instance } from '@jcoreio/aws-select-cli-prompts'
+import { spawn } from 'child_process'
+import os from 'os'
+import fs from 'fs'
+import path from 'path'
+import { promisify } from 'util'
 
-async function getAmiName(ec2, ImageId) {
+async function getAmiName(ec2: EC2Client, ImageId: string): Promise<string> {
   const { Images } = await ec2.send(
-    new DescribeImagesCommand({ ImageIds: [ImageId] })
+    new DescribeImagesCommand({
+      ImageIds: [ImageId],
+    })
   )
   const name = Images && Images[0] && Images[0].Name
   if (!name) throw new Error(`failed to get name for image: ${ImageId}`)
   return name
 }
-function getUser(ami) {
+function getUser(ami: string) {
   if (/ubuntu|nanostack/i.test(ami)) return 'ubuntu'
   if (/debian/i.test(ami)) return 'admin'
   if (/fedora/i.test(ami)) return 'fedora'
@@ -34,34 +35,10 @@ function getUser(ami) {
   if (/turnkey|omni/i.test(ami)) return 'root'
   return 'ec2-user'
 }
-
-function signalCode(signal) {
-  switch (signal) {
-    case 'SIGABRT':
-      return 6
-    case 'SIGHUP':
-      return 1
-    case 'SIGILL':
-      return 4
-    case 'SIGINT':
-      return 2
-    case 'SIGKILL':
-      return 9
-    case 'SIGPIPE':
-      return 13
-    case 'SIGQUIT':
-      return 3
-    case 'SIGSEGV':
-      return 11
-    case 'SIGTERM':
-      return 15
-    case 'SIGTRAP':
-      return 5
-  }
-  return 0
-}
-
-async function ec2ssh({ ec2 = new EC2Client(), ssm = new SSMClient() } = {}) {
+export default async function ec2ssh({
+  ec2 = new EC2Client(),
+  ssm = new SSMClient(),
+}: { ec2?: EC2Client; ssm?: SSMClient } = {}): Promise<void> {
   const instance = await selectEC2Instance({
     ec2,
     Filters: [
@@ -72,13 +49,8 @@ async function ec2ssh({ ec2 = new EC2Client(), ssm = new SSMClient() } = {}) {
     ],
   })
 
-  const {
-    InstanceId,
-    ImageId,
-    KeyName,
-    PrivateDnsName,
-    PublicDnsName,
-  } = instance
+  const { InstanceId, ImageId, KeyName, PrivateDnsName, PublicDnsName } =
+    instance
   let host = PrivateDnsName || PublicDnsName
   if (!host)
     throw new Error(`instance doesn't have a PrivateDnsName or PublicDnsName`)
@@ -87,10 +59,17 @@ async function ec2ssh({ ec2 = new EC2Client(), ssm = new SSMClient() } = {}) {
 
   if (InstanceId) {
     const {
-      InstanceInformationList: [{ PlatformName } = {}] = [],
+      InstanceInformationList: [
+        { PlatformName } = { PlatformName: undefined },
+      ] = [],
     } = await ssm.send(
       new DescribeInstanceInformationCommand({
-        Filters: [{ Key: 'InstanceIds', Values: [InstanceId] }],
+        Filters: [
+          {
+            Key: 'InstanceIds',
+            Values: [InstanceId],
+          },
+        ],
       })
     )
     if (PlatformName) {
@@ -116,29 +95,23 @@ async function ec2ssh({ ec2 = new EC2Client(), ssm = new SSMClient() } = {}) {
 
   // eslint-disable-next-line no-console
   console.log('ssh', ...args)
-
-  const child = spawn('ssh', args, { stdio: 'inherit' })
-
-  return await new Promise((resolve, reject) => {
+  const child = spawn('ssh', args, {
+    stdio: 'inherit',
+  })
+  return await new Promise<void>((resolve, reject) => {
     child.once('error', reject)
     child.once('close', (code, signal) => {
-      resolve({ code, signal })
-      if (typeof code === 'number') process.exit(code)
-      process.exit(signalCode(signal) + 127)
+      if (code === 0) {
+        resolve()
+      }
+      throw Object.assign(
+        new Error(
+          code != null
+            ? `process exited with code ${code}`
+            : `process was killed with signal ${signal}`
+        ),
+        { code, signal }
+      )
     })
   })
-}
-
-if (require.main === module) {
-  ec2ssh().then(
-    ({ code, signal }) => {
-      if (typeof code === 'number') process.exit(code)
-      process.exit(signalCode(signal) + 127)
-    },
-    error => {
-      // eslint-disable-next-line no-console
-      console.error(error.message)
-      process.exit(1)
-    }
-  )
 }
