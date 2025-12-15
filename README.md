@@ -11,6 +11,8 @@ npm i -g @jcoreio/ec2-ssh
 npx @jcoreio/ec2-ssh
 ```
 
+# CLI
+
 Use at your own risk. Prompts you to select an EC2 instance, then SSHes into that instance, attempting to select the correct username automatically, and using the internal DNS hostname, and the identity file at `~/.ssh/<KeyName>.pem` if it exists, where `KeyName` is the property of the EC2 instance in the `aws-sdk` response.
 
 If you're not storing your identity files in that manner, you can add the following to your `~/.ssh/config`:
@@ -40,3 +42,24 @@ Welcome to Ubuntu 18.04.1 LTS (GNU/Linux 4.15.0-1021-aws x86_64)
  * Support:        https://ubuntu.com/advantage
 ...
 ```
+
+# API
+
+```ts
+import { ec2ssh } from '@jcoreio/ec2-ssh'
+```
+
+## Options
+
+- `ec2?: EC2Client` - the EC2 client to use
+- `ssm?: SSMClient` - the SSM client to use
+- `logCommand?: boolean` - if truthy, log the `ssh` command to `stderr` before executing it
+- `Instance?: Instance` - the EC2 Instance to SSH into (if omitted, it is looked up by `InstanceId`)
+- `InstanceId?: string` - the ID of the EC2 Instance to SSH into (if omitted, the user is prompted to select an instance)
+- `args?: readonly string[]` - additional args to pass to the `ssh`
+  command
+- `options?: execa.Options` - options to pass to `execa`
+
+## Returns
+
+An `execa` result `Promise`

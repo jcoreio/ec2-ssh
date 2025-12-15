@@ -1,15 +1,25 @@
-import ec2ssh from './index'
+#!/usr./bin/env node
+if (process.env.AWS_SDK_LOAD_CONFIG == null)
+  process.env.AWS_SDK_LOAD_CONFIG = '1'
+import { ec2ssh } from './index'
 
-ec2ssh().then(
+ec2ssh({
+  args: process.argv.slice(2),
+  options: { stdio: 'inherit' },
+  logCommand: true,
+}).then(
   () => {
     process.exit(0)
   },
-  (error) => {
-    // eslint-disable-next-line no-console
-    console.error(error.message)
-    if ('code' in error) process.exit(error.code)
-    else if ('signal' in error) process.exit(signalCode(error.signal))
-    else process.exit(1)
+  (error: unknown) => {
+    if (error instanceof Object) {
+      // eslint-disable-next-line no-console
+      if ('message' in error) console.error(error.message)
+      if ('code' in error && typeof error.code === 'number')
+        process.exit(error.code)
+      else if ('signal' in error && typeof error.signal === 'string')
+        process.exit(signalCode(error.signal))
+    } else process.exit(1)
   }
 )
 

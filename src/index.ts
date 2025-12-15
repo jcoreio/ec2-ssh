@@ -1,20 +1,19 @@
-#!/usr/bin/env node
-
-'use strict'
-
-if (process.env.AWS_SDK_LOAD_CONFIG == null)
-  process.env.AWS_SDK_LOAD_CONFIG = '1'
-import { EC2Client, DescribeImagesCommand } from '@aws-sdk/client-ec2'
+import {
+  EC2Client,
+  DescribeImagesCommand,
+  DescribeInstancesCommand,
+  Instance,
+} from '@aws-sdk/client-ec2'
 import {
   SSMClient,
   DescribeInstanceInformationCommand,
 } from '@aws-sdk/client-ssm'
 import { selectEC2Instance } from '@jcoreio/aws-select-cli-prompts'
-import { spawn } from 'child_process'
 import os from 'os'
 import fs from 'fs'
 import path from 'path'
 import { promisify } from 'util'
+import type { Options, ResultPromise } from 'execa'
 
 async function getAmiName(ec2: EC2Client, ImageId: string): Promise<string> {
   const { Images } = await ec2.send(
@@ -35,25 +34,58 @@ function getUser(ami: string) {
   if (/turnkey|omni/i.test(ami)) return 'root'
   return 'ec2-user'
 }
-export default async function ec2ssh({
+export async function ec2ssh<OptionsType extends Options>({
   ec2 = new EC2Client(),
   ssm = new SSMClient(),
-}: { ec2?: EC2Client; ssm?: SSMClient } = {}): Promise<void> {
-  const instance = await selectEC2Instance({
-    ec2,
-    Filters: [
-      {
-        Name: 'instance-state-name',
-        Values: ['pending', 'running'],
-      },
-    ],
-  })
+  logCommand,
+  Instance,
+  InstanceId,
+  args: additionalArgs,
+  options,
+}: {
+  ec2?: EC2Client
+  ssm?: SSMClient
+  logCommand?: boolean
+  Instance?: Instance
+  InstanceId?: string
+  args?: readonly string[]
+  options?: OptionsType
+} = {}): Promise<Awaited<ResultPromise<{} & OptionsType>>> {
+  const { execa } = await import('execa')
+  const chalk = new (await import('chalk')).Chalk()
+  if (!Instance) {
+    if (InstanceId != null) {
+      Instance = (
+        await ec2.send(
+          new DescribeInstancesCommand({
+            InstanceIds: [InstanceId],
+          })
+        )
+      ).Reservations?.[0]?.Instances?.[0]
+      if (!Instance) {
+        throw new Error(`Instance not found: ${InstanceId}`)
+      }
+    } else {
+      Instance = await selectEC2Instance({
+        ec2,
+        Filters: [
+          {
+            Name: 'instance-state-name',
+            Values: ['pending', 'running'],
+          },
+        ],
+      })
+    }
+  }
 
-  const { InstanceId, ImageId, KeyName, PrivateDnsName, PublicDnsName } =
-    instance
+  if (InstanceId == null) {
+    ;({ InstanceId } = Instance)
+  }
+  const { ImageId, KeyName, PrivateDnsName, PublicDnsName } = Instance
   let host = PrivateDnsName || PublicDnsName
-  if (!host)
+  if (!host) {
     throw new Error(`instance doesn't have a PrivateDnsName or PublicDnsName`)
+  }
 
   let user = ImageId ? getUser(await getAmiName(ec2, ImageId)) : null
 
@@ -86,32 +118,23 @@ export default async function ec2ssh({
     try {
       await promisify(fs.stat)(identityFile)
       args.push('-i', identityFile)
-    } catch (error) {
+    } catch {
       // ignore
     }
   }
 
-  args.push(host, ...process.argv.slice(2))
+  args.push(host, ...(additionalArgs || []))
 
-  // eslint-disable-next-line no-console
-  console.log('ssh', ...args)
-  const child = spawn('ssh', args, {
-    stdio: 'inherit',
-  })
-  return await new Promise<void>((resolve, reject) => {
-    child.once('error', reject)
-    child.once('close', (code, signal) => {
-      if (code === 0) {
-        resolve()
-      }
-      throw Object.assign(
-        new Error(
-          code != null
-            ? `process exited with code ${code}`
-            : `process was killed with signal ${signal}`
-        ),
-        { code, signal }
+  if (logCommand) {
+    // eslint-disable-next-line no-console
+    console.error(
+      chalk.gray(
+        '$ ssh',
+        ...args.map((arg) =>
+          /^[-_a-z0-9/.@:]+$/i.test(arg) ? arg : `'${arg.replace(/'/g, "\\'")}'`
+        )
       )
-    })
-  })
+    )
+  }
+  return await execa('ssh', args, options)
 }
