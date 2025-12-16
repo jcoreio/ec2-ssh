@@ -5,6 +5,7 @@ import { ec2ssh } from './index'
 
 ec2ssh({
   args: process.argv.slice(2),
+  pseudoTTY: true,
   options: { stdio: 'inherit' },
   logCommand: true,
 }).then(

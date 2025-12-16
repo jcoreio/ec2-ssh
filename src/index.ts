@@ -14,6 +14,7 @@ import fs from 'fs'
 import path from 'path'
 import { promisify } from 'util'
 import type { Options, ResultPromise } from 'execa'
+import { Readable } from 'stream'
 
 async function getAmiName(ec2: EC2Client, ImageId: string): Promise<string> {
   const { Images } = await ec2.send(
@@ -40,6 +41,7 @@ export async function ec2ssh<OptionsType extends Options>({
   logCommand,
   Instance,
   InstanceId,
+  pseudoTTY,
   args: additionalArgs,
   options,
 }: {
@@ -48,6 +50,7 @@ export async function ec2ssh<OptionsType extends Options>({
   logCommand?: boolean
   Instance?: Instance
   InstanceId?: string
+  pseudoTTY?: boolean
   args?: readonly string[]
   options?: OptionsType
 } = {}): Promise<Awaited<ResultPromise<{} & OptionsType>>> {
@@ -112,7 +115,21 @@ export async function ec2ssh<OptionsType extends Options>({
 
   if (user) host = `${user}@${host}`
 
-  const args = ['-t']
+  const args = []
+  const input =
+    options?.input ??
+    ((
+      options?.stdio === 'inherit' ||
+      (Array.isArray(options?.stdio) && options.stdio[0] === 'inherit')
+    ) ?
+      process.stdin
+    : undefined)
+  if (
+    pseudoTTY ??
+    (input instanceof Readable && 'isTTY' in input && input.isTTY)
+  ) {
+    args.push('-t')
+  }
   if (KeyName) {
     const identityFile = path.join(os.homedir(), '.ssh', `${KeyName}.pem`)
     try {
