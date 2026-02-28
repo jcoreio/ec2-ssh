@@ -1,4 +1,4 @@
-#!/usr./bin/env node
+#!/usr/bin/env node
 if (process.env.AWS_SDK_LOAD_CONFIG == null)
   process.env.AWS_SDK_LOAD_CONFIG = '1'
 import { ec2ssh } from './index'
